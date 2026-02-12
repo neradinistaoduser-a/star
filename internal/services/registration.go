@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -22,7 +23,7 @@ func NewRegistrationService(client *magnetarapi.RegistrationAsyncClient, nodeIdR
 	}
 }
 
-func (rs *RegistrationService) Register(maxRetries int8, bindAddress string) error {
+func (rs *RegistrationService) Register(ctx context.Context, maxRetries int8, bindAddress string) error {
 	err := rs.nodeIdRepo.PutClusterId("")
 	if err != nil {
 		log.Fatal(err)
@@ -30,7 +31,7 @@ func (rs *RegistrationService) Register(maxRetries int8, bindAddress string) err
 	req := rs.buildReq(bindAddress)
 	for attemptsLeft := maxRetries; attemptsLeft > 0; attemptsLeft-- {
 		errChan := make(chan error)
-		err := rs.tryRegister(req, errChan)
+		err := rs.tryRegister(ctx, req, errChan)
 		if err == nil {
 			err = <-errChan
 			if err == nil {
@@ -42,8 +43,8 @@ func (rs *RegistrationService) Register(maxRetries int8, bindAddress string) err
 	return errors.New("max registration attempts exceeded")
 }
 
-func (rs *RegistrationService) tryRegister(req *magnetarapi.RegistrationReq, errChan chan<- error) error {
-	err := rs.client.Register(req, func(resp *magnetarapi.RegistrationResp) {
+func (rs *RegistrationService) tryRegister(ctx context.Context, req *magnetarapi.RegistrationReq, errChan chan<- error) error {
+	err := rs.client.Register(ctx, req, func(resp *magnetarapi.RegistrationResp) {
 		errChan <- rs.nodeIdRepo.Put(domain.NodeId{Value: resp.NodeId})
 	})
 	return err
