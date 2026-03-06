@@ -152,6 +152,12 @@ func (a *app) startGrpcServer() error {
 }
 
 func (a *app) Start() error {
+	shutdownTracing := initTracing(
+		"star",
+		a.config.JaegerGRPCEndpoint(),
+	)
+	a.shutdownProcesses = append(a.shutdownProcesses, shutdownTracing)
+
 	a.init()
 
 	err := a.startConfigAsyncServer()
